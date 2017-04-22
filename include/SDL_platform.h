@@ -65,6 +65,17 @@
 #undef __LINUX__ /* do we need to do this? */
 #define __ANDROID__ 1
 #endif
+#if defined(XBOX) || defined(__XBOX__)
+#undef XBOX
+#define XBOX 1
+#undef __XBOX__
+#define __XBOX__ 1
+/* Don't assume we're building for Windows when targeting Xbox */
+#undef WIN32
+#undef _WIN32
+#undef _MSC_VER
+#define __GNUC__ 4
+#endif
 
 #if defined(__APPLE__)
 /* lets us know what version of Mac OS X we're compiling on */
