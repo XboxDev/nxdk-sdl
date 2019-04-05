@@ -32,6 +32,7 @@
 
 #define HAVE_STDARG_H   1
 #define HAVE_STDDEF_H   1
+#define HAVE_STDIO_H   1
 #define HAVE_MALLOC
 #define STDC_HEADERS 1
 
