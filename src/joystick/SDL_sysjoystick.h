@@ -151,6 +151,7 @@ extern SDL_JoystickDriver SDL_HIDAPI_JoystickDriver;
 extern SDL_JoystickDriver SDL_IOS_JoystickDriver;
 extern SDL_JoystickDriver SDL_LINUX_JoystickDriver;
 extern SDL_JoystickDriver SDL_WINDOWS_JoystickDriver;
+extern SDL_JoystickDriver SDL_XBOX_JoystickDriver;
 
 /* Special function to update HIDAPI devices */
 extern void SDL_HIDAPI_UpdateDevices(void);
