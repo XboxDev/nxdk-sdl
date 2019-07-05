@@ -112,8 +112,8 @@
 /* Enable the dummy audio driver (src/audio/dummy/\*.c) */
 #define SDL_AUDIO_DISABLED  1
 
-/* Enable the stub joystick driver (src/joystick/dummy/\*.c) */
-#define SDL_JOYSTICK_DISABLED   1
+/* Enable the Xbox joystick driver (src/joystick/xbox/\*.c) */
+#define SDL_JOYSTICK_XBOX   1
 
 /* Enable the stub haptic driver (src/haptic/dummy/\*.c) */
 #define SDL_HAPTIC_DISABLED 1
