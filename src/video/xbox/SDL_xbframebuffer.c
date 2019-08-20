@@ -32,7 +32,7 @@
 #include <pbkit/pbkit.h>
 #include <hal/xbox.h>
 #include <hal/video.h>
-#include <xboxrt/debug.h>
+#include <debug.h>
 
 
 //Screen dimension constants
