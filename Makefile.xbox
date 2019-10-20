@@ -34,3 +34,6 @@ SDL_SRCS += $(wildcard $(SDL_DIR)/src/atomic/*.c)
 SRCS += $(SDL_SRCS)
 CFLAGS += -I$(SDL_DIR)/include \
           -DXBOX
+
+CXXFLAGS += -I$(SDL_DIR)/include \
+          -DXBOX
