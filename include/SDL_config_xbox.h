@@ -124,8 +124,8 @@
 /* Enable the stub sensor driver (src/sensor/dummy/\*.c) */
 #define SDL_SENSOR_DISABLED 1
 
-/* Enable the stub thread support (src/thread/generic/\*.c) */
-#define SDL_THREADS_DISABLED    1
+/* Enable the Xbox thread support (src/thread/windows/\*.c) */
+#define SDL_THREAD_WINDOWS 1
 
 /* Enable the stub timer support (src/timer/dummy/\*.c) */
 #define SDL_TIMERS_DISABLED 1
