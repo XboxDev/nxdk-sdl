@@ -208,6 +208,7 @@ extern AudioBootStrap ANDROIDAUDIO_bootstrap;
 extern AudioBootStrap openslES_bootstrap;
 extern AudioBootStrap PSPAUDIO_bootstrap;
 extern AudioBootStrap EMSCRIPTENAUDIO_bootstrap;
+extern AudioBootStrap XBOXAUDIO_bootstrap;
 
 #endif /* SDL_sysaudio_h_ */
 
