@@ -19,9 +19,31 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include "../../SDL_internal.h"
+#include "SDL_pixels.h"
+#include <assert.h>
 
 extern int SDL_XBOX_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
 extern int SDL_XBOX_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, int numrects);
 extern void SDL_XBOX_DestroyWindowFramebuffer(_THIS, SDL_Window * window);
+
+static inline
+Uint32 pixelFormatSelector(int bpp) {
+    Uint32 ret_val = 0;
+    switch(bpp) {
+    case 15:
+        ret_val = SDL_PIXELFORMAT_ARGB1555;
+        break;
+    case 16:
+        ret_val = SDL_PIXELFORMAT_RGB565;
+        break;
+    case 32:
+        ret_val = SDL_PIXELFORMAT_RGB888;
+        break;
+    default:
+        assert(0);
+        break;
+    }
+    return ret_val;
+}
 
 /* vi: set ts=4 sw=4 expandtab: */

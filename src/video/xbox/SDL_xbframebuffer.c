@@ -29,21 +29,15 @@
 #define XBOX_SURFACE   "_SDL_XboxSurface"
 
 
-#include <pbkit/pbkit.h>
-#include <hal/xbox.h>
 #include <hal/video.h>
-#include <debug.h>
+#include <assert.h>
 
-
-//Screen dimension constants
-const extern int SCREEN_WIDTH;
-const extern int SCREEN_HEIGHT;
-const extern int SCREEN_BPP;
 
 int SDL_XBOX_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch)
 {
     SDL_Surface *surface;
-    const Uint32 surface_format = SDL_PIXELFORMAT_RGB888;
+    VIDEO_MODE vm = XVideoGetMode();
+    const Uint32 surface_format = pixelFormatSelector(vm.bpp);
     int w, h;
     int bpp;
     Uint32 Rmask, Gmask, Bmask, Amask;
@@ -77,27 +71,27 @@ int SDL_XBOX_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect 
         return SDL_SetError("Couldn't find Xbox surface for window");
     }
 
-#if 0
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-        for (int x = 0; x < SCREEN_WIDTH; x++) {
-            unsigned char *pixel = (uint8_t*)surface->pixels;
-            pixel += y*surface->pitch;
-            pixel += x*surface->format->BytesPerPixel;
+    VIDEO_MODE vm = XVideoGetMode();
 
-            uint32_t pixel32 = *(uint32_t *)pixel;
+    // Get information about SDL window surface
+    const void *src = surface->pixels;
+    Uint32 src_format = surface->format->format;
+    int src_pitch = surface->pitch;
 
-            unsigned char *videoBuffer = XVideoGetFB();
-            videoBuffer += (y * SCREEN_WIDTH + x) * (SCREEN_BPP >> 3);
-            videoBuffer[0] = (pixel32 & surface->format->Bmask) >> surface->format->Bshift;
-            videoBuffer[1] = (pixel32 & surface->format->Gmask) >> surface->format->Gshift;
-            videoBuffer[2] = (pixel32 & surface->format->Rmask) >> surface->format->Rshift;
-            videoBuffer[3] = 0;
-        }
-    }
-#endif
+    // Get information about GPU framebuffer
+    void *dst = XVideoGetFB();
+    Uint32 dst_format = pixelFormatSelector(vm.bpp);
+    int dst_bytes_per_pixel = SDL_BYTESPERPIXEL(dst_format);
+    int dst_pitch = vm.width * dst_bytes_per_pixel;
 
-    // Happens to be in a compatible format
-    memcpy(XVideoGetFB(), surface->pixels, SCREEN_WIDTH*SCREEN_HEIGHT*4);
+    // Check if the SDL window fits into GPU framebuffer
+    int width = surface->w;
+    int height = surface->h;
+    assert(width <= vm.width);
+    assert(height <= vm.height);
+
+    // Copy SDL window surface to GPU framebuffer
+    SDL_ConvertPixels(width, height, src_format, src, src_pitch, dst_format, dst, dst_pitch);
 
     return 0;
 }

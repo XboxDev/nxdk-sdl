@@ -106,19 +106,18 @@ VideoBootStrap XBOX_bootstrap = {
 };
 
 
-#include <pbkit/pbkit.h>
-#include <hal/xbox.h>
 #include <hal/video.h>
 int
 XBOX_VideoInit(_THIS)
 {
     SDL_DisplayMode mode;
+    VIDEO_MODE vm = XVideoGetMode();
 
-    /* Use a fake 32-bpp desktop mode */
-    mode.format = SDL_PIXELFORMAT_RGB888;
-    mode.w = 640;
-    mode.h = 480;
-    mode.refresh_rate = 30;
+    /* Select display mode based on Xbox video mode */
+    mode.format = pixelFormatSelector(vm.bpp);
+    mode.w = vm.width;
+    mode.h = vm.height;
+    mode.refresh_rate = vm.refresh;
     mode.driverdata = NULL;
     if (SDL_AddBasicVideoDisplay(&mode) < 0) {
         return -1;
