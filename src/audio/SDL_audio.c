@@ -107,6 +107,9 @@ static const AudioBootStrap *const bootstrap[] = {
 #if SDL_AUDIO_DRIVER_DISK
     &DISKAUDIO_bootstrap,
 #endif
+#if SDL_AUDIO_DRIVER_XBOX
+    &XBOXAUDIO_bootstrap,
+#endif
 #if SDL_AUDIO_DRIVER_DUMMY
     &DUMMYAUDIO_bootstrap,
 #endif

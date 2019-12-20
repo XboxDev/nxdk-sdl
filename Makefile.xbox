@@ -3,7 +3,7 @@ SDL_DIR = $(NXDK_DIR)/lib/sdl/SDL2
 # Based on Makefile.minimal (some backends adapted for Xbox)
 SDL_SRCS += $(wildcard $(SDL_DIR)/src/*.c)
 SDL_SRCS += $(wildcard $(SDL_DIR)/src/audio/*.c)
-SDL_SRCS += $(wildcard $(SDL_DIR)/src/audio/dummy/*.c)
+SDL_SRCS += $(wildcard $(SDL_DIR)/src/audio/xbox/*.c)
 SDL_SRCS += $(wildcard $(SDL_DIR)/src/cpuinfo/*.c)
 SDL_SRCS += $(wildcard $(SDL_DIR)/src/events/*.c)
 SDL_SRCS += $(wildcard $(SDL_DIR)/src/file/*.c)
