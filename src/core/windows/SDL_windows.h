@@ -35,6 +35,8 @@
 #endif
 
 #include <windows.h>
+
+#ifndef NXDK
 #include <basetyps.h>   /* for REFIID with broken mingw.org headers */
 
 #include "SDL_rect.h"
@@ -95,6 +97,8 @@ extern BOOL WIN_IsEqualIID(REFIID a, REFIID b);
 /* Convert between SDL_rect and RECT */
 extern void WIN_RECTToRect(const RECT *winrect, SDL_Rect *sdlrect);
 extern void WIN_RectToRECT(const SDL_Rect *sdlrect, RECT *winrect);
+
+#endif /* NXDK */
 
 #endif /* _INCLUDED_WINDOWS_H */
 
