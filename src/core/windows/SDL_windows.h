@@ -35,6 +35,8 @@
 #endif
 
 #include <windows.h>
+
+#ifndef NXDK
 #include <basetyps.h>   /* for REFIID with broken mingw.org headers */
 
 /* Routines to convert from UTF8 to native Windows text */
@@ -69,6 +71,8 @@ extern char *WIN_LookupAudioDeviceName(const WCHAR *name, const GUID *guid);
 /* Checks to see if two GUID are the same. */
 extern BOOL WIN_IsEqualGUID(const GUID * a, const GUID * b);
 extern BOOL WIN_IsEqualIID(REFIID a, REFIID b);
+
+#endif /* NXDK */
 
 #endif /* _INCLUDED_WINDOWS_H */
 
