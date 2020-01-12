@@ -21,6 +21,14 @@
 #ifndef SDL_internal_h_
 #define SDL_internal_h_
 
+/* Workaround to prevent SDL from trying to use all kinds of Windows features not available when building for Xbox */
+#if defined(XBOX)
+#undef WIN32
+#undef _WIN32
+#undef _MSC_VER
+#define __GNUC__ 4
+#endif
+
 /* Many of SDL's features require _GNU_SOURCE on various platforms */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE

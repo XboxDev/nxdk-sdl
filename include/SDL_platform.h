@@ -70,11 +70,12 @@
 #define XBOX 1
 #undef __XBOX__
 #define __XBOX__ 1
-/* Don't assume we're building for Windows when targeting Xbox */
-#undef WIN32
-#undef _WIN32
-#undef _MSC_VER
-#define __GNUC__ 4
+/* clang doesn't like the SDL packing pragma headers */
+#pragma GCC diagnostic ignored "-Wpragma-pack"
+/* Disable SDL's weird feature of renaming main() */
+#define SDL_MAIN_HANDLED
+/* Disable SDL's inclusion of sal.h */
+#define SDL_DISABLE_ANALYZE_MACROS
 #endif
 
 #if defined(__APPLE__)
