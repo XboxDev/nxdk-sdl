@@ -207,13 +207,13 @@ static void SDL_XBOX_JoystickUpdate(SDL_Joystick *joystick) {
     XPAD_INPUT *xpi = joystick->hwdata->padData;
 
     axisUpdate(joystick,  xpi->sLThumbX, 0);
-    axisUpdate(joystick,  xpi->sLThumbY, 1);
+    axisUpdate(joystick,  -xpi->sLThumbY, 1);
     ltrigg = xpi->CurrentButtons.ucAnalogButtons[XPAD_LEFT_TRIGGER];
     ltrigg = ((ltrigg << 8) | ltrigg) - (1 << 15);
     axisUpdate(joystick, ltrigg, 2);
 
     axisUpdate(joystick,  xpi->sRThumbX, 3);
-    axisUpdate(joystick,  xpi->sRThumbY, 4);
+    axisUpdate(joystick,  -xpi->sRThumbY, 4);
     rtrigg = xpi->CurrentButtons.ucAnalogButtons[XPAD_RIGHT_TRIGGER];
     rtrigg = ((rtrigg << 8) | rtrigg) - (1 << 15);
     axisUpdate(joystick, rtrigg, 5);
