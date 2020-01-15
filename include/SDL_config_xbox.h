@@ -127,8 +127,8 @@
 /* Enable the Xbox thread support (src/thread/windows/\*.c) */
 #define SDL_THREAD_WINDOWS 1
 
-/* Enable the stub timer support (src/timer/dummy/\*.c) */
-#define SDL_TIMERS_DISABLED 1
+/* Enable the Xbox timer support (src/timer/windows/\*.c) */
+#define SDL_TIMER_WINDOWS 1
 
 /* Enable the dummy video driver (src/video/dummy/\*.c) */
 #define SDL_VIDEO_DRIVER_XBOX  1
