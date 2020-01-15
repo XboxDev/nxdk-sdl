@@ -130,7 +130,7 @@
 /* Enable the stub timer support (src/timer/dummy/\*.c) */
 #define SDL_TIMERS_DISABLED 1
 
-/* Enable the dummy video driver (src/video/dummy/\*.c) */
+/* Enable the Xbox video driver (src/video/xbox/\*.c) */
 #define SDL_VIDEO_DRIVER_XBOX  1
 
 /* Enable the dummy filesystem driver (src/filesystem/dummy/\*.c) */
