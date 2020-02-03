@@ -95,7 +95,7 @@
 #define HAVE_LOGF 1
 #define HAVE_LOG10 1
 #define HAVE_LOG10F 1
-#define HAVE_POW 1
+#undef HAVE_POW
 #define HAVE_POWF 1
 #define HAVE_SIN 1
 #define HAVE_SINF 1
