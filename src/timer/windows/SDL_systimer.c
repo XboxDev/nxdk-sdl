@@ -23,7 +23,9 @@
 #ifdef SDL_TIMER_WINDOWS
 
 #include "../../core/windows/SDL_windows.h"
+#if !defined(__XBOX__)
 #include <mmsystem.h>
+#endif
 
 #include "SDL_timer.h"
 #include "SDL_hints.h"
@@ -41,7 +43,7 @@ static LARGE_INTEGER ticks_per_second;
 static void
 SDL_SetSystemTimerResolution(const UINT uPeriod)
 {
-#ifndef __WINRT__
+#if !defined(__WINRT__) && !defined(__XBOX__)
     static UINT timer_period = 0;
 
     if (uPeriod != timer_period) {
