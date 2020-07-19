@@ -27,9 +27,7 @@
 #include "SDL_xboxaudio.h"
 
 #include "SDL_audio.h"
-#include "SDL_mutex.h"
 #include "../SDL_audio_c.h"
-#include "../SDL_audiodev_c.h"
 
 #include <xboxkrnl/xboxkrnl.h>
 #include <hal/audio.h>
@@ -42,69 +40,34 @@
 static void
 xbox_audio_callback(void *pac97device, void *data)
 {
-    SDL_AudioDevice* _this = (SDL_AudioDevice*) data;
-    SDL_AudioCallback callback = _this->callbackspec.callback;
-    void* buffer = _this->hidden->buffers[_this->hidden->next_buffer];
-    const int len = (int) _this->spec.size;
+    /* This runs from a DPC, so it can't use the FPU without restoring it */
 
-    /* This is run from a DPC, so store the FPU state */
-    KFLOATING_SAVE float_save;
-    NTSTATUS status = KeSaveFloatingPointState(&float_save);
-    SDL_assert(status == STATUS_SUCCESS);
-
-    /* Only do something if audio is enabled */
-    if (!SDL_AtomicGet(&_this->enabled) || SDL_AtomicGet(&_this->paused)) {
-        if (_this->stream) {
-            SDL_AudioStreamClear(_this->stream);
-        }
-        SDL_memset(buffer, _this->spec.silence, len);
-    } else {
-        if (_this->stream == NULL) {  /* no conversion necessary. */
-            SDL_LockMutex(_this->mixer_lock);
-            callback(_this->callbackspec.userdata, buffer, len);
-            SDL_UnlockMutex(_this->mixer_lock);
-        } else {  /* streaming/converting */
-            const int stream_len = _this->callbackspec.size;
-            while (SDL_AudioStreamAvailable(_this->stream) < len) {
-                callback(_this->callbackspec.userdata, _this->work_buffer, stream_len);
-                if (SDL_AudioStreamPut(_this->stream, _this->work_buffer, stream_len) == -1) {
-                    SDL_AudioStreamClear(_this->stream);
-                    SDL_AtomicSet(&_this->enabled, 0);
-                    break;
-                }
-            }
-
-            const int got = SDL_AudioStreamGet(_this->stream, buffer, len);
-            SDL_assert((got < 0) || (got == len));
-            if (got != len) {
-                SDL_memset(buffer, _this->spec.silence, len);
-            }
-        }
-    }
-
-    /* Send samples to XAudio */
-    XAudioProvideSamples(_this->hidden->buffers[_this->hidden->next_buffer], len, FALSE);
-
-    /* Advance to next buffer */
-    _this->hidden->next_buffer = (_this->hidden->next_buffer + 1) % BUFFER_COUNT;
-
-    /* This is run from a DPC, so restore the FPU state */
-    status = KeRestoreFloatingPointState(&float_save);
-    SDL_assert(status == STATUS_SUCCESS);
+    struct SDL_PrivateAudioData *audiodata = (struct SDL_PrivateAudioData *) data;
+    SDL_SemPost(audiodata->playsem);
+    return;
 }
 
 static void
-XBOXAUDIO_CloseDevice(SDL_AudioDevice *device)
+XBOXAUDIO_CloseDevice(_THIS)
 {
-    SDL_PrivateAudioData *hidden = (SDL_PrivateAudioData *) device->hidden;
-
     /* Reset hardware and disable callback */
     XAudioInit(16, 2, NULL, NULL);
 
     /* Free buffers */
     for (int i = 0; i < BUFFER_COUNT; ++i) {
-        MmFreeContiguousMemory(hidden->buffers[i]);
+        if (_this->hidden->buffers[i] != NULL) {
+            MmFreeContiguousMemory(_this->hidden->buffers[i]);
+        }
     }
+
+    /* Destroy the audio buffer semaphore */
+    if (_this->hidden->playsem) {
+        SDL_DestroySemaphore(_this->hidden->playsem);
+    }
+
+    SDL_free(_this->hidden);
+
+    return;
 }
 
 static int
@@ -123,13 +86,24 @@ XBOXAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     /* Calculate the final parameters for this audio specification */
     SDL_CalculateAudioSpec(&_this->spec);
 
-    XAudioInit(16, 2, xbox_audio_callback, (void *)_this);
+    /* Create the audio buffer semaphore; we have no buffers ready for queue */
+    _this->hidden->playsem = SDL_CreateSemaphore(0);
+    if (!_this->hidden->playsem) {
+        return SDL_SetError("Open device failed!");
+    }
+
+    XAudioInit(16, 2, xbox_audio_callback, (void *)_this->hidden);
 
     /* Allocate buffers */
     for (int i = 0; i < BUFFER_COUNT; ++i) {
         _this->hidden->buffers[i] = MmAllocateContiguousMemoryEx(_this->spec.size, 0, 0xFFFFFFFF, 0, PAGE_READWRITE | PAGE_WRITECOMBINE);
         if (_this->hidden->buffers[i] == NULL) {
             return SDL_OutOfMemory();
+        }
+
+        /* Do not queue the first buffer */
+        if (i == 0) {
+            continue;
         }
 
         /* Fill buffer with silence */
@@ -147,20 +121,48 @@ XBOXAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     return 0;
 }
 
+static void
+XBOXAUDIO_WaitDevice(_THIS)
+{
+    /* Wait for an audio buffer to be free */
+    SDL_SemWait(_this->hidden->playsem);
+
+    return;
+}
+
+static Uint8 *
+XBOXAUDIO_GetDeviceBuf(_THIS)
+{
+    return _this->hidden->buffers[_this->hidden->next_buffer];
+}
+
+static void
+XBOXAUDIO_PlayDevice(_THIS)
+{
+    /* Send samples to XAudio */
+    XAudioProvideSamples(_this->hidden->buffers[_this->hidden->next_buffer], _this->spec.size, FALSE);
+
+    /* Advance to next buffer */
+    _this->hidden->next_buffer = (_this->hidden->next_buffer + 1) % BUFFER_COUNT;
+
+    return;
+}
+
 static int
 XBOXAUDIO_Init(SDL_AudioDriverImpl * impl)
 {
     /* Set the function pointers */
     impl->OpenDevice = XBOXAUDIO_OpenDevice;
     impl->CloseDevice = XBOXAUDIO_CloseDevice;
-    impl->OnlyHasDefaultOutputDevice = 1;
-    impl->ProvidesOwnCallbackThread = 1;
+    impl->WaitDevice = XBOXAUDIO_WaitDevice;
+    impl->GetDeviceBuf = XBOXAUDIO_GetDeviceBuf;
+    impl->PlayDevice = XBOXAUDIO_PlayDevice;
     /*
-     *    impl->WaitDevice = XBOXAUDIO_WaitDevice;
-     *    impl->GetDeviceBuf = XBOXAUDIO_GetDeviceBuf;
-     *    impl->PlayDevice = XBOXAUDIO_PlayDevice;
      *    impl->Deinitialize = XBOXAUDIO_Deinitialize;
      */
+
+    impl->HasCaptureSupport             = 0;        /* TODO */
+    impl->OnlyHasDefaultOutputDevice    = 1;
 
     return 1;
 }

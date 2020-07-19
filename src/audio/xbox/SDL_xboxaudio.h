@@ -34,8 +34,9 @@
 #define BUFFER_COUNT 2
 
 typedef struct SDL_PrivateAudioData {
-  void* buffers[BUFFER_COUNT];
-  int next_buffer;
+    void* buffers[BUFFER_COUNT];
+    int next_buffer;
+    SDL_sem *playsem;
 } SDL_PrivateAudioData;
 
 #endif /* SDL_xboxaudio_h_ */
