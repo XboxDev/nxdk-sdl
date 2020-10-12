@@ -93,6 +93,9 @@ int SDL_XBOX_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect 
     // Copy SDL window surface to GPU framebuffer
     SDL_ConvertPixels(width, height, src_format, src, src_pitch, dst_format, dst, dst_pitch);
 
+    // Writeback WC buffers
+    XVideoFlushFB();
+
     return 0;
 }
 
