@@ -47,12 +47,46 @@
 #include "SDL_xbevents_c.h"
 #include "SDL_xbframebuffer_c.h"
 
+#include <hal/video.h>
+
 #define XBOXVID_DRIVER_NAME "xbox"
 
 /* Initialization/Query functions */
 static int XBOX_VideoInit(_THIS);
 static int XBOX_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
 static void XBOX_VideoQuit(_THIS);
+static int XBOX_CreateWindow(_THIS, SDL_Window * window);
+
+/* Currently only one window */
+static SDL_Window *xbox_window = NULL;
+
+static int
+XBOX_CreateWindow(_THIS, SDL_Window * window)
+{
+    if (xbox_window) {
+        return SDL_SetError("Xbox only supports one window");
+    }
+
+    /* Adjust the window data to match the screen */
+    VIDEO_MODE vm = XVideoGetMode();
+    window->x = 0;
+    window->y = 0;
+    window->w = vm.width;
+    window->h = vm.height;
+
+    window->flags &= ~SDL_WINDOW_RESIZABLE;     /* window is NEVER resizeable */
+    window->flags &= ~SDL_WINDOW_HIDDEN;
+    window->flags |= SDL_WINDOW_SHOWN;          /* only one window on Xbox */
+    window->flags |= SDL_WINDOW_FULLSCREEN;
+
+    /* One window, it always has focus */
+    SDL_SetMouseFocus(window);
+    SDL_SetKeyboardFocus(window);
+
+    xbox_window = window;
+
+    return 0;
+}
 
 /* XBOX driver bootstrap functions */
 
@@ -87,6 +121,7 @@ XBOX_CreateDevice(int devindex)
     }
 
     /* Set the function pointers */
+    device->CreateSDLWindow = XBOX_CreateWindow;
     device->VideoInit = XBOX_VideoInit;
     device->VideoQuit = XBOX_VideoQuit;
     device->SetDisplayMode = XBOX_SetDisplayMode;
@@ -105,8 +140,6 @@ VideoBootStrap XBOX_bootstrap = {
     XBOX_Available, XBOX_CreateDevice
 };
 
-
-#include <hal/video.h>
 int
 XBOX_VideoInit(_THIS)
 {
