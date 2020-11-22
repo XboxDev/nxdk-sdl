@@ -88,6 +88,15 @@ XBOX_CreateWindow(_THIS, SDL_Window * window)
     return 0;
 }
 
+void
+XBOX_DestroyWindow(_THIS, SDL_Window * window)
+{
+    if (window == xbox_window) {
+        /* Clear the window pointer so a new window could be created later */
+        xbox_window = NULL;
+    }
+}
+
 /* XBOX driver bootstrap functions */
 
 static int
@@ -122,6 +131,7 @@ XBOX_CreateDevice(int devindex)
 
     /* Set the function pointers */
     device->CreateSDLWindow = XBOX_CreateWindow;
+    device->DestroyWindow = XBOX_DestroyWindow;
     device->VideoInit = XBOX_VideoInit;
     device->VideoQuit = XBOX_VideoQuit;
     device->SetDisplayMode = XBOX_SetDisplayMode;

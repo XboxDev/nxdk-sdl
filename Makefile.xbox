@@ -17,6 +17,7 @@ SDL2_SRCS := \
 	$(wildcard $(SDL2_DIR)/src/filesystem/dummy/*.c) \
 	$(wildcard $(SDL2_DIR)/src/render/*.c) \
 	$(wildcard $(SDL2_DIR)/src/render/software/*.c) \
+	$(wildcard $(SDL2_DIR)/src/render/xbox_pbkit/*.c) \
 	$(wildcard $(SDL2_DIR)/src/sensor/*.c) \
 	$(wildcard $(SDL2_DIR)/src/sensor/dummy/*.c) \
 	$(wildcard $(SDL2_DIR)/src/stdlib/*.c) \
@@ -32,6 +33,8 @@ SDL2_SRCS := \
 SDL2_SRCS += \
 	$(wildcard $(SDL2_DIR)/src/libm/*.c) \
 	$(wildcard $(SDL2_DIR)/src/atomic/*.c)
+
+LIB_DEPS += $(addsuffix .d, $(SDL2_SRCS))
 
 NXDK_CFLAGS += -I$(SDL2_DIR)/include \
                -DXBOX
