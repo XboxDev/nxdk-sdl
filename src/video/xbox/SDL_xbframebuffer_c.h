@@ -37,7 +37,7 @@ Uint32 pixelFormatSelector(int bpp) {
         ret_val = SDL_PIXELFORMAT_RGB565;
         break;
     case 32:
-        ret_val = SDL_PIXELFORMAT_RGB888;
+        ret_val = SDL_PIXELFORMAT_ARGB8888;
         break;
     default:
         assert(0);
