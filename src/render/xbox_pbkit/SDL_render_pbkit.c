@@ -32,6 +32,7 @@
 #include <hal/xbox.h>
 #include <pbkit/pbkit.h>
 #include <windows.h>
+#include <x86intrin.h>
 
 #define PB_MAXRAM 0x03FFAFFF
 #define PB_MAXZ 16777215.f
@@ -75,6 +76,7 @@ typedef struct
     unsigned int bytespp;
     unsigned int filter;
     unsigned int addr;
+    SDL_bool is_aligned;
     void *data;
 } XBOX_PB_TextureData;
 
@@ -141,6 +143,28 @@ PixelFormatToNV(const Uint32 format, const int swizzled)
         return NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8;
     default:
         return 0;
+    }
+}
+
+/* Slightly gutted SDL_memcpySSE */
+static void
+FastTextureUpdate(XBOX_PB_TextureData * xtex, const Uint8 * src)
+{
+    int i;
+    Uint8 *dst = xtex->data;
+    __m128 values[4];
+    for (i = xtex->size / 64; i--;) {
+        _mm_prefetch(src, _MM_HINT_NTA);
+        values[0] = *(__m128 *) (src + 0);
+        values[1] = *(__m128 *) (src + 16);
+        values[2] = *(__m128 *) (src + 32);
+        values[3] = *(__m128 *) (src + 48);
+        _mm_stream_ps((float *) (dst + 0), values[0]);
+        _mm_stream_ps((float *) (dst + 16), values[1]);
+        _mm_stream_ps((float *) (dst + 32), values[2]);
+        _mm_stream_ps((float *) (dst + 48), values[3]);
+        src += 64;
+        dst += 64;
     }
 }
 
@@ -295,7 +319,8 @@ XBOX_PB_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     xtex->bytespp = SDL_BYTESPERPIXEL(texture->format);
     xtex->pitch = xtex->bytespp * xtex->width;
     xtex->size = xtex->height * xtex->pitch;
-    xtex->data = MmAllocateContiguousMemoryEx(xtex->size, 0, PB_MAXRAM, 0, 0x404);
+    xtex->data = MmAllocateContiguousMemoryEx(xtex->size, 0, PB_MAXRAM, 16, 0x404);
+    xtex->is_aligned = (xtex->size & 63) == 0;
 
     if (!xtex->data)
     {
@@ -324,8 +349,12 @@ XBOX_PB_UpdateTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     size_t length;
 
     /* If it's a whole texture update, just do one big memcpy */
-    if (rect->w == xtex->width && rect->h == xtex->height) {
-        SDL_memcpy(xtex->data, pixels, xtex->size);
+    if (rect->w == xtex->width && rect->h == xtex->height && pitch == xtex->pitch) {
+        /* If src is 16 bytes aligned and everything else is 64 bytes aligned, use SSE copy */
+        if (((unsigned int)pixels & 15) == 0 && xtex->is_aligned)
+            FastTextureUpdate(xtex, pixels);
+        else
+            SDL_memcpy(xtex->data, pixels, xtex->size);
     } else {
         src = pixels;
         dst = (Uint8 *) xtex->data +
