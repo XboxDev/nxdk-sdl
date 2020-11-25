@@ -53,6 +53,8 @@ static float mat_identity[16] =
     0.f, 0.f, 0.f, 1.f,
 };
 
+static SDL_bool pbkit_initialized = SDL_FALSE;
+
 typedef struct
 {
     SDL_BlendMode cur_blendmode;
@@ -260,6 +262,58 @@ SetViewport(XBOX_PB_RenderData *data, const SDL_Rect vrect)
         pb_end(p);
         data->cur_viewport = vrect;
     }
+}
+
+static inline void
+InitGPUState(void)
+{
+    Uint32 *p = pb_begin();
+
+    /* set fixed pipeline mode */
+    p = pb_push1(p, NV097_SET_TRANSFORM_EXECUTION_MODE,
+        MASK(NV097_SET_TRANSFORM_EXECUTION_MODE_MODE, NV097_SET_TRANSFORM_EXECUTION_MODE_MODE_FIXED) |
+        MASK(NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE, NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE_PRIV));
+
+    /* set unused matrices to identity */
+    p = pb_push_transposed_matrix(p, NV097_SET_MODEL_VIEW_MATRIX, mat_identity);
+    p = pb_push_transposed_matrix(p, NV097_SET_INVERSE_MODEL_VIEW_MATRIX, mat_identity);
+    p = pb_push_transposed_matrix(p, NV097_SET_COMPOSITE_MATRIX, mat_identity);
+
+    /* turn off stuff we don't need */
+    p = pb_push4(p, NV097_SET_VIEWPORT_OFFSET, 0, 0, 0, 0);
+    p = pb_push1(p, NV097_SET_LIGHTING_ENABLE, 0);
+    p = pb_push1(p, NV097_SET_SPECULAR_ENABLE, 0);
+    p = pb_push1(p, NV097_SET_DEPTH_TEST_ENABLE, 0);
+    p = pb_push1(p, NV097_SET_STENCIL_TEST_ENABLE, 0);
+    p = pb_push1(p, NV097_SET_ALPHA_TEST_ENABLE, 0);
+    p = pb_push1(p, NV097_SET_CULL_FACE_ENABLE, 0);
+    p = pb_push1(p, NV097_SET_DEPTH_MASK, 0);
+
+    /* default to BLENDMODE_NONE */
+    p = pb_push1(p, NV097_SET_BLEND_ENABLE, 0);
+
+    pb_end(p);
+
+    /* reset all texture units */
+    p = pb_begin();
+    for (unsigned int i = 0; i < 4; i++) {
+        p = pb_push1(p, NV20_TCL_PRIMITIVE_3D_TX_ENABLE(i), 0x0003FFC0); /* disable */
+        p = pb_push1(p, NV20_TCL_PRIMITIVE_3D_TX_MATRIX_ENABLE(i), 0);
+        p = pb_push1(p, NV20_TCL_PRIMITIVE_3D_TX_WRAP(i), 0x030303); /* clamp */
+    }
+    pb_end(p);
+
+    /* set all attribute types to float */
+    p = pb_begin();
+    pb_push(p++, NV097_SET_VERTEX_DATA_ARRAY_FORMAT, 16);
+    for(unsigned int i = 0; i < 16; i++)
+        *(p++) = NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F;
+    pb_end(p);
+
+    /* set base pixel combiner */
+    SetCombinerColor();
+
+    while (pb_busy());
 }
 
 static inline void
@@ -792,10 +846,9 @@ XBOX_PB_DestroyTexture(SDL_Renderer *renderer, SDL_Texture *texture)
         return;
 
     if (renderdata->cur_texture == texture) {
-        /* wait till all render operations with this texture finish */
-        EndDrawing(renderdata);
-        /* then unbind it */
+        /* unbind texture and wait until everything is pushed to the GPU */
         SetTexture(renderdata, NULL);
+        while (pb_busy());
     }
 
     if (xtex->data)
@@ -812,8 +865,12 @@ XBOX_PB_DestroyRenderer(SDL_Renderer *renderer)
     XBOX_PB_RenderData *data = (XBOX_PB_RenderData *) renderer->driverdata;
     if (data) {
         EndDrawing(data);
-        pb_kill();
-        XVideoFlushFB();
+        if (pbkit_initialized) {
+            /* FIXME: this results in a black screen after reinit
+               pb_kill();
+               pbkit_initialized = SDL_FALSE;
+            */
+        }
         SDL_free(data);
     }
     SDL_free(renderer);
@@ -822,13 +879,18 @@ XBOX_PB_DestroyRenderer(SDL_Renderer *renderer)
 SDL_Renderer *
 XBOX_PB_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
+    SDL_Rect vrect;
     SDL_Renderer *renderer;
     XBOX_PB_RenderData *data;
     int err;
 
-    if ((err = pb_init()) != 0) {
-        SDL_SetError("pb_init() returned %d", err);
-        return NULL;
+    if (!pbkit_initialized) {
+        if ((err = pb_init()) != 0) {
+            SDL_SetError("pb_init() returned %d", err);
+            return NULL;
+        }
+        InitGPUState();
+        pbkit_initialized = SDL_TRUE;
     }
 
     renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
@@ -875,59 +937,12 @@ XBOX_PB_CreateRenderer(SDL_Window * window, Uint32 flags)
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
     }
 
-    pb_show_front_screen();
-
-    Uint32 *p = pb_begin();
-
-    /* set fixed pipeline mode */
-    p = pb_push1(p, NV097_SET_TRANSFORM_EXECUTION_MODE,
-        MASK(NV097_SET_TRANSFORM_EXECUTION_MODE_MODE, NV097_SET_TRANSFORM_EXECUTION_MODE_MODE_FIXED) |
-        MASK(NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE, NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE_PRIV));
-
-    /* set unused matrices to identity */
-    p = pb_push_transposed_matrix(p, NV097_SET_MODEL_VIEW_MATRIX, mat_identity);
-    p = pb_push_transposed_matrix(p, NV097_SET_INVERSE_MODEL_VIEW_MATRIX, mat_identity);
-    p = pb_push_transposed_matrix(p, NV097_SET_COMPOSITE_MATRIX, mat_identity);
-
-    /* turn off stuff we don't need */
-    p = pb_push4(p, NV097_SET_VIEWPORT_OFFSET, 0, 0, 0, 0);
-    p = pb_push1(p, NV097_SET_LIGHTING_ENABLE, 0);
-    p = pb_push1(p, NV097_SET_SPECULAR_ENABLE, 0);
-    p = pb_push1(p, NV097_SET_DEPTH_TEST_ENABLE, 0);
-    p = pb_push1(p, NV097_SET_STENCIL_TEST_ENABLE, 0);
-    p = pb_push1(p, NV097_SET_ALPHA_TEST_ENABLE, 0);
-    p = pb_push1(p, NV097_SET_CULL_FACE_ENABLE, 0);
-    p = pb_push1(p, NV097_SET_DEPTH_MASK, 0);
-
-    /* default to BLENDMODE_NONE */
-    p = pb_push1(p, NV097_SET_BLEND_ENABLE, 0);
-
-    pb_end(p);
-
     /* set default viewport */
-    const SDL_Rect vrect = { 0, 0, data->buf_width, data->buf_height };
+    vrect = (SDL_Rect) { 0, 0, data->buf_width, data->buf_height };
     SetViewport(data, vrect);
 
-    /* reset all texture units */
-    p = pb_begin();
-    for (unsigned int i = 0; i < 4; i++) {
-        p = pb_push1(p, NV20_TCL_PRIMITIVE_3D_TX_ENABLE(i), 0x0003FFC0); /* disable */
-        p = pb_push1(p, NV20_TCL_PRIMITIVE_3D_TX_MATRIX_ENABLE(i), 0);
-        p = pb_push1(p, NV20_TCL_PRIMITIVE_3D_TX_WRAP(i), 0x030303); /* clamp */
-    }
-    pb_end(p);
-
-    /* set all attribute types to float */
-    p = pb_begin();
-    pb_push(p++, NV097_SET_VERTEX_DATA_ARRAY_FORMAT, 16);
-    for(unsigned int i = 0; i < 16; i++)
-        *(p++) = NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F;
-    pb_end(p);
-
-    /* set base pixel combiner */
-    SetCombinerColor();
-
-    while (pb_busy());
+    /* show screen */
+    pb_show_front_screen();
 
     return renderer;
 }
