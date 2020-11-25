@@ -447,15 +447,7 @@ XBOX_PB_LockTexture(SDL_Renderer *renderer, SDL_Texture *texture,
 static void
 XBOX_PB_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
 {
-    XBOX_PB_TextureData *xtex = (XBOX_PB_TextureData *) texture->driverdata;
-    SDL_Rect rect;
-
-    /* We do whole texture updates, at least for now */
-    rect.x = 0;
-    rect.y = 0;
-    rect.w = texture->w;
-    rect.h = texture->h;
-    XBOX_PB_UpdateTexture(renderer, texture, &rect, xtex->data, xtex->pitch);
+    /* No need to update anything, client was writing to texture data */
 }
 
 static int
