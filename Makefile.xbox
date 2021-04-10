@@ -33,6 +33,9 @@ SDL2_SRCS += \
 	$(wildcard $(SDL2_DIR)/src/libm/*.c) \
 	$(wildcard $(SDL2_DIR)/src/atomic/*.c)
 
+SDL2TEST_SRCS := \
+	$(wildcard $(SDL2_DIR)/src/test/*.c)
+
 NXDK_CFLAGS += -I$(SDL2_DIR)/include \
                -DXBOX
 
@@ -40,13 +43,17 @@ NXDK_CXXFLAGS += -I$(SDL2_DIR)/include \
                  -DXBOX
 
 SDL2_OBJS = $(addsuffix .obj, $(basename $(SDL2_SRCS)))
+SDL2TEST_OBJS = $(addsuffix .obj, $(basename $(SDL2TEST_SRCS)))
 
 $(NXDK_DIR)/lib/libSDL2.lib: $(SDL2_OBJS)
+$(NXDK_DIR)/lib/SDL2_test.lib: $(SDL2TEST_OBJS)
 
 main.exe: $(NXDK_DIR)/lib/libSDL2.lib
+main.exe: $(NXDK_DIR)/lib/SDL2_test.lib
 
 CLEANRULES += clean-sdl2
 
 .PHONY: clean-sdl2
 clean-sdl2:
 	$(VE)rm -f $(SDL2_OBJS) $(NXDK_DIR)/lib/libSDL2.lib
+	$(VE)rm -f $(SDL2TEST_OBJS) $(NXDK_DIR)/lib/SDL2_test.lib
