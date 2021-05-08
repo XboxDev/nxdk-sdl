@@ -39,7 +39,7 @@
 #else  /* fprintf, _exit(), etc. */
 #include <stdio.h>
 #include <stdlib.h>
-#if ! defined(__WINRT__)
+#if ! defined(__WINRT__) && ! defined(NXDK)
 #include <unistd.h>
 #endif
 #endif
