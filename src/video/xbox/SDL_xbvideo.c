@@ -56,6 +56,7 @@ static int XBOX_VideoInit(_THIS);
 static int XBOX_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
 static void XBOX_VideoQuit(_THIS);
 static int XBOX_CreateWindow(_THIS, SDL_Window * window);
+static void XBOX_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
 
 /* Currently only one window */
 static SDL_Window *xbox_window = NULL;
@@ -86,6 +87,15 @@ XBOX_CreateWindow(_THIS, SDL_Window * window)
     xbox_window = window;
 
     return 0;
+}
+
+void
+XBOX_DestroyWindow(_THIS, SDL_Window * window)
+{
+    if (window == xbox_window) {
+        /* Clear the window pointer so a new window could be created later */
+        xbox_window = NULL;
+    }
 }
 
 /* XBOX driver bootstrap functions */
@@ -122,9 +132,11 @@ XBOX_CreateDevice(int devindex)
 
     /* Set the function pointers */
     device->CreateSDLWindow = XBOX_CreateWindow;
+    device->DestroyWindow = XBOX_DestroyWindow;
     device->VideoInit = XBOX_VideoInit;
     device->VideoQuit = XBOX_VideoQuit;
     device->SetDisplayMode = XBOX_SetDisplayMode;
+    device->GetDisplayModes = XBOX_GetDisplayModes;
     device->PumpEvents = XBOX_PumpEvents;
     device->CreateWindowFramebuffer = SDL_XBOX_CreateWindowFramebuffer;
     device->UpdateWindowFramebuffer = SDL_XBOX_UpdateWindowFramebuffer;
@@ -156,9 +168,6 @@ XBOX_VideoInit(_THIS)
         return -1;
     }
 
-    SDL_zero(mode);
-    SDL_AddDisplayMode(&_this->displays[0], &mode);
-
     /* We're done! */
     return 0;
 }
@@ -167,6 +176,13 @@ static int
 XBOX_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
     return 0;
+}
+
+static void
+XBOX_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
+{
+    /* Only one display mode available, the current one */
+    SDL_AddDisplayMode(display, &display->current_mode);
 }
 
 void

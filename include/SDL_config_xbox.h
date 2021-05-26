@@ -133,6 +133,9 @@
 /* Enable the Xbox video driver (src/video/xbox/\*.c) */
 #define SDL_VIDEO_DRIVER_XBOX  1
 
+/* Enable the Xbox pbkit renderer (src/renderer/xbox_pbkit/\*.c) */
+#define SDL_VIDEO_RENDER_XBOX_PBKIT 1
+
 /* Enable the dummy filesystem driver (src/filesystem/dummy/\*.c) */
 #define SDL_FILESYSTEM_DUMMY  1
 

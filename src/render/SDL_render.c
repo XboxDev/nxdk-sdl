@@ -98,6 +98,9 @@ static const SDL_RenderDriver *render_drivers[] = {
 #if SDL_VIDEO_RENDER_PSP
     &PSP_RenderDriver,
 #endif
+#if SDL_VIDEO_RENDER_XBOX_PBKIT
+    &XBOX_PB_RenderDriver,
+#endif
     &SW_RenderDriver
 };
 #endif /* !SDL_RENDER_DISABLED */
