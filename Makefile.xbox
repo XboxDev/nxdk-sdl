@@ -21,6 +21,7 @@ SDL2_SRCS := \
 	$(wildcard $(SDL2_DIR)/src/sensor/dummy/*.c) \
 	$(wildcard $(SDL2_DIR)/src/stdlib/*.c) \
 	$(wildcard $(SDL2_DIR)/src/thread/*.c) \
+	$(wildcard $(SDL2_DIR)/src/thread/generic/SDL_syscond.c) \
 	$(wildcard $(SDL2_DIR)/src/thread/windows/*.c) \
 	$(wildcard $(SDL2_DIR)/src/timer/*.c) \
 	$(wildcard $(SDL2_DIR)/src/timer/windows/*.c) \
