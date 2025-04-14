@@ -46,6 +46,7 @@
 #include "SDL_xbvideo.h"
 #include "SDL_xbevents_c.h"
 #include "SDL_xbframebuffer_c.h"
+#include "SDL_xbkeyboard.h"
 
 #include <hal/video.h>
 
@@ -112,6 +113,7 @@ static SDL_VideoDevice *
 XBOX_CreateDevice(int devindex)
 {
     SDL_VideoDevice *device;
+    SDL_VideoData *videodata;
 
     /* Initialize all variables that we clean on shutdown */
     device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
@@ -119,6 +121,15 @@ XBOX_CreateDevice(int devindex)
         SDL_OutOfMemory();
         return (0);
     }
+
+    videodata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
+    if (!videodata) {
+        SDL_OutOfMemory();
+        SDL_free(device);
+        return NULL;
+    }
+
+    device->driverdata = videodata;
 
     /* Set the function pointers */
     device->CreateSDLWindow = XBOX_CreateWindow;
@@ -143,6 +154,7 @@ VideoBootStrap XBOX_bootstrap = {
 int
 XBOX_VideoInit(_THIS)
 {
+    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
     SDL_DisplayMode mode;
     VIDEO_MODE vm = XVideoGetMode();
 
@@ -159,6 +171,8 @@ XBOX_VideoInit(_THIS)
     SDL_zero(mode);
     SDL_AddDisplayMode(&_this->displays[0], &mode);
 
+    XBOX_KeyboardInit(&videodata->kbd);
+
     /* We're done! */
     return 0;
 }
@@ -172,6 +186,8 @@ XBOX_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 void
 XBOX_VideoQuit(_THIS)
 {
+    SDL_VideoData *videodata = _this->driverdata;
+    XBOX_KeyboardQuit(&videodata->kbd);
 }
 
 #endif /* SDL_VIDEO_DRIVER_XBOX */

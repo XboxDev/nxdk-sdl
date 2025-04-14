@@ -18,26 +18,27 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+
+#ifndef SDL_xbkeyboard_h_
+#define SDL_xbkeyboard_h_
+
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_XBOX
+/* forward declare */
+struct usbhid_dev;
 
-/* Being a null driver, there's no event stream. We just define stubs for
-   most of the API. */
+struct XBOX_keyboard {
+	/* this is the USB HID structure */
+	struct usbhid_dev *fd;
 
-#include "../../events/SDL_events_c.h"
+	/* the last data that we processed */
+	uint8_t ordata[8];
+};
 
-#include "SDL_xbvideo.h"
-#include "SDL_xbevents_c.h"
+extern int XBOX_KeyboardInit(struct XBOX_keyboard *kbd);
+extern void XBOX_KeyboardQuit(struct XBOX_keyboard *kbd);
+extern void XBOX_KeyboardPoll(struct XBOX_keyboard *kbd);
 
-void
-XBOX_PumpEvents(_THIS)
-{
-    SDL_VideoData *videodata = _this->driverdata;
-
-    XBOX_KeyboardPoll(&videodata->kbd);
-}
-
-#endif /* SDL_VIDEO_DRIVER_XBOX */
+#endif /* SDL_xbkeyboard_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */
