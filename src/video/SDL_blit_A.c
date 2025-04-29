@@ -23,6 +23,11 @@
 #include "SDL_video.h"
 #include "SDL_blit.h"
 
+/* Workaround for lack of MMX intrinsic support for non-SSE2 targets */
+#ifdef __clang__
+#undef __MMX__
+#endif
+
 /* Functions to perform alpha blended blitting */
 
 /* N->1 blending with per-surface alpha */
