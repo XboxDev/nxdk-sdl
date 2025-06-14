@@ -36,6 +36,8 @@
 #include <assert.h>
 #include <usbh_lib.h>
 #include <xid_driver.h>
+#include <usb/libusbohci/inc/hub.h>
+#include <xboxkrnl/xboxkrnl.h>
 
 //#define SDL_JOYSTICK_XBOX_DEBUG
 #ifdef SDL_JOYSTICK_XBOX_DEBUG
@@ -146,6 +148,34 @@ static xid_dev_t *xid_from_device_index(Sint32 device_index) {
     return NULL;
 }
 
+static Sint32 xid_get_device_port(xid_dev_t *xid_dev) {
+    UDEV_T *udev, *parent_udev;
+    
+    udev = xid_dev->iface->udev;
+    ULONG has_internal_hub = XboxHardwareInfo.Flags & XBOX_HW_FLAG_INTERNAL_USB_HUB;
+    while (udev != NULL)
+    {
+        parent_udev = NULL;
+        if (udev->parent != NULL) {
+            parent_udev = udev->parent->iface->udev;
+        }
+
+        if ((has_internal_hub && parent_udev->parent == NULL) || (!has_internal_hub && udev->parent == NULL))
+        {
+            switch (udev->port_num)
+            {
+                case 3: return 1;
+                case 4: return 2;
+                case 1: return 3;
+                case 2: return 4;
+                default: return 0;
+            }
+        }
+        udev = parent_udev;
+    }
+    return 0;
+}
+
 static SDL_bool core_has_init = SDL_FALSE;
 static Sint32 SDL_XBOX_JoystickInit(void) {
     if (!core_has_init)
@@ -217,17 +247,18 @@ static const char* SDL_XBOX_JoystickGetDeviceName(Sint32 device_index) {
     return name[device_index];
 }
 
-//FIXME
-//Player index is just the order the controllers were plugged in.
-//This may not be what the user expects on a Xbox console.
-//Player index should consider that Port 1 = player 1, Port 2 = player 2 etc.
+// Returns the port number the device is connected to
+// 1 = Port 1, 2 = Port 2, etc.
 static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index) {
     xid_dev_t *xid_dev = xid_from_device_index(device_index);
 
     if (xid_dev == NULL)
         return -1;
 
-    Sint32 player_index = device_index;
+    Sint32 player_index = xid_get_device_port(xid_dev);
+    if (player_index == 0) {    // fallback to device_index if xid_get_device_port fails (returns 0)
+        player_index = device_index;
+    }
     JOY_DBGMSG("SDL_XBOX_JoystickGetDevicePlayerIndex: %i\n", player_index);
 
     return player_index;
