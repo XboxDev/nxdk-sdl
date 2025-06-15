@@ -91,6 +91,8 @@ typedef struct joystick_hwdata
 
 static Sint32 parse_input_data(xid_dev_t *xid_dev, PXINPUT_GAMEPAD controller, Uint8 *rdata);
 
+static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index);
+
 //Create SDL events for connection/disconnection. These events can then be handled in the user application
 static void connection_callback(xid_dev_t *xid_dev, int status) {
     JOY_DBGMSG("connection_callback: uid %i connected \n", xid_dev->uid);
@@ -228,18 +230,17 @@ static const char* SDL_XBOX_JoystickGetDeviceName(Sint32 device_index) {
     static char name[MAX_JOYSTICKS][64];
     Uint32 max_len = sizeof(name[device_index]);
 
-    //FIXME. See SDL_XBOX_JoystickGetDevicePlayerIndex().
-    Sint32 player_index = device_index;
+    Sint32 player_index = SDL_XBOX_JoystickGetDevicePlayerIndex(device_index);
     switch (xid_dev->xid_desc.bType)
     {
     case XID_TYPE_GAMECONTROLLER:
-        SDL_snprintf(name[device_index], max_len, "Original Xbox Controller #%u", player_index + 1);
+        SDL_snprintf(name[device_index], max_len, "Original Xbox Controller #%u", player_index);
         break;
     case XID_TYPE_XREMOTE:
-        SDL_snprintf(name[device_index], max_len, "Original Xbox IR Remote #%u", player_index + 1);
+        SDL_snprintf(name[device_index], max_len, "Original Xbox IR Remote #%u", player_index);
         break;
     case XID_TYPE_STEELBATTALION:
-        SDL_snprintf(name[device_index], max_len, "Steel Battalion Controller #%u", player_index + 1);
+        SDL_snprintf(name[device_index], max_len, "Steel Battalion Controller #%u", player_index);
         break;
 
     }
