@@ -109,7 +109,7 @@ void sbc_update(SDL_Joystick *joystick) {
     if (sbc == NULL) return;
     
     XINPUT_SBC xsbc;
-    SDL_memcpy(&xsbc, joystick->hwdata->raw_data, sizeof(XINPUT_SBC));
+    SDL_memcpy(&xsbc, joystick->hwdata->raw_data + 2, sizeof(XINPUT_SBC));
     
     for (enum SBC_BUTTON btn = 0; btn < SBC_BUTTON_COUNT; btn++) {
         SDL_PrivateJoystickButton(joystick, btn, get_sbc_button_pressed(&xsbc, btn));

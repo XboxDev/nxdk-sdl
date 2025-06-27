@@ -59,13 +59,10 @@ void gamepad_update(SDL_Joystick *joystick) {
         gamepad->low_frequency_rumble = 0;
         gamepad->high_frequency_rumble = 0;
     }
-
-    Uint8 rdata[MAX_PACKET_SIZE];
-    SDL_memcpy(rdata, joystick->hwdata->raw_data, MAX_PACKET_SIZE);
     
     XINPUT_GAMEPAD xpad;
-    
     {
+        Uint8 * rdata = joystick->hwdata->raw_data;
         Uint16 wButtons = *((Uint16*)&rdata[2]);
         xpad.wButtons = 0;
 
@@ -86,17 +83,17 @@ void gamepad_update(SDL_Joystick *joystick) {
         if (rdata[7] > BUTTON_DEADZONE) xpad.wButtons |= XINPUT_GAMEPAD_Y;
         if (rdata[8] > BUTTON_DEADZONE) xpad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER; //BLACK
         if (rdata[9] > BUTTON_DEADZONE) xpad.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER; //WHITE
+
+        //Map the left and right triggers
+        xpad.bLeftTrigger = rdata[10];
+        xpad.bRightTrigger = rdata[11];
+
+        //Map analog sticks
+        xpad.sThumbLX = *((Sint16 *)&rdata[12]);
+        xpad.sThumbLY = *((Sint16 *)&rdata[14]);
+        xpad.sThumbRX = *((Sint16 *)&rdata[16]);
+        xpad.sThumbRY = *((Sint16 *)&rdata[18]);
     }
-
-    //Map the left and right triggers
-    xpad.bLeftTrigger = rdata[10];
-    xpad.bRightTrigger = rdata[11];
-
-    //Map analog sticks
-    xpad.sThumbLX = *((Sint16 *)&rdata[12]);
-    xpad.sThumbLY = *((Sint16 *)&rdata[14]);
-    xpad.sThumbRX = *((Sint16 *)&rdata[16]);
-    xpad.sThumbRY = *((Sint16 *)&rdata[18]);
     
     //HAT
     {
