@@ -68,23 +68,7 @@ enum SBC_AXIS {
     SBC_AXIS_COUNT
 };
 
-// Steel Battalion Controller
-typedef struct _XINPUT_SBC
-{
-    Uint16 buttons[3];
-    Uint16 aimingLeverX; // 0 = Left, 0xFFFF = Right
-    Uint16 aimingLeverY; // 0 = Top,  0xFFFF = Bottom
-    Sint16 turningLever;
-    Sint16 sightChangeX;
-    Sint16 sightChangeY;
-    Uint16 slidePedal;
-    Uint16 brakePedal;
-    Uint16 accelPedal;
-    Uint8  tuner;   // 0-15 is from 9oclock, around clockwise
-    Sint8  shifter; // -2 = R, -1 = N, 0 = Error, 1 = 1st, 2 = 2nd, 3 = 3rnd, 4 = 4th, 5 = 5th
-} XINPUT_SBC, *PXINPUT_SBC;
-
-static inline psbc_data get_sbc_data(SDL_Joystick * joystick) {
+static inline sbc_data * get_sbc_data(SDL_Joystick * joystick) {
     return (joystick == NULL || joystick->hwdata == NULL) ? NULL : &joystick->hwdata->data.sbc;
 }
 
@@ -97,45 +81,44 @@ void sbc_open(SDL_Joystick * joystick) {
     joystick->nbuttons = SBC_BUTTON_COUNT; //This includes the toggle switches
 }
 
-static SDL_bool get_sbc_button_pressed(PXINPUT_SBC xsbc, enum SBC_BUTTON btn) {
+static SDL_bool get_sbc_button_pressed(xid_steelbattalion_in * insbc, enum SBC_BUTTON btn) {
     unsigned int button_offset = btn / 16;
 	Uint16 button_mask = 1 << (btn % 16);
 
-    return (xsbc->buttons[button_offset] & button_mask) ? SDL_TRUE : SDL_FALSE;
+    return (insbc->buttons[button_offset] & button_mask) ? SDL_TRUE : SDL_FALSE;
 }
 
 void sbc_update(SDL_Joystick *joystick) {
-    psbc_data sbc = get_sbc_data(joystick);
+    sbc_data * sbc = get_sbc_data(joystick);
     if (sbc == NULL) return;
     
-    XINPUT_SBC xsbc;
-    SDL_memcpy(&xsbc, joystick->hwdata->raw_data + 2, sizeof(XINPUT_SBC));
+    xid_steelbattalion_in * insbc = &joystick->hwdata->in.sbc;
     
     for (enum SBC_BUTTON btn = 0; btn < SBC_BUTTON_COUNT; btn++) {
-        SDL_PrivateJoystickButton(joystick, btn, get_sbc_button_pressed(&xsbc, btn));
+        SDL_PrivateJoystickButton(joystick, btn, get_sbc_button_pressed(insbc, btn));
     }
     
     // Aiming Lever (convert from unsigned to signed)
-    SDL_PrivateJoystickAxis(joystick, AXIS_AIM_X, xsbc.aimingLeverX >> 1);
-    SDL_PrivateJoystickAxis(joystick, AXIS_AIM_Y, xsbc.aimingLeverY >> 1);
+    SDL_PrivateJoystickAxis(joystick, AXIS_AIM_X, insbc->aimingLeverX);
+    SDL_PrivateJoystickAxis(joystick, AXIS_AIM_Y, insbc->aimingLeverY);
     
     // Turning Lever
-    SDL_PrivateJoystickAxis(joystick, AXIS_TURN, xsbc.turningLever);
+    SDL_PrivateJoystickAxis(joystick, AXIS_TURN, insbc->turningLever);
     
     // Sight Change
-    SDL_PrivateJoystickAxis(joystick, AXIS_SIGHT_X, xsbc.sightChangeX);
-    SDL_PrivateJoystickAxis(joystick, AXIS_SIGHT_Y, xsbc.sightChangeY);
+    SDL_PrivateJoystickAxis(joystick, AXIS_SIGHT_X, insbc->sightChangeX);
+    SDL_PrivateJoystickAxis(joystick, AXIS_SIGHT_Y, insbc->sightChangeY);
     
     // Pedals (convert from unsigned to signed)
-    SDL_PrivateJoystickAxis(joystick, AXIS_SLIDE, xsbc.slidePedal >> 1);
-    SDL_PrivateJoystickAxis(joystick, AXIS_ACCEL, xsbc.accelPedal >> 1);
-    SDL_PrivateJoystickAxis(joystick, AXIS_BRAKE, xsbc.brakePedal >> 1);
+    SDL_PrivateJoystickAxis(joystick, AXIS_SLIDE, insbc->slidePedal);
+    SDL_PrivateJoystickAxis(joystick, AXIS_ACCEL, insbc->accelPedal);
+    SDL_PrivateJoystickAxis(joystick, AXIS_BRAKE, insbc->brakePedal);
     
     // Tuner MIN=0, MAX=15
-    SDL_PrivateJoystickAxis(joystick, AXIS_TUNER, xsbc.tuner);
+    SDL_PrivateJoystickAxis(joystick, AXIS_TUNER, insbc->tuner);
     
-    // Shifter MIN=-1, MAX=5
-    SDL_PrivateJoystickAxis(joystick, AXIS_SHIFTER, xsbc.shifter);
+    // Shifter MIN=-2, MAX=5
+    SDL_PrivateJoystickAxis(joystick, AXIS_SHIFTER, insbc->shifter);
 }
 
 void sbc_close(SDL_Joystick * joystick) {

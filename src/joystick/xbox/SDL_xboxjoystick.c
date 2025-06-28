@@ -40,14 +40,6 @@
 #include <usb/libusbohci/inc/hub.h>
 #include <xboxkrnl/xboxkrnl.h>
 
-//#define SDL_JOYSTICK_XBOX_DEBUG
-#ifdef SDL_JOYSTICK_XBOX_DEBUG
-#include <hal/debug.h>
-#define JOY_DBGMSG debugPrint
-#else
-#define JOY_DBGMSG(...)
-#endif
-
 #define MAX_JOYSTICKS CONFIG_XID_MAX_DEV
 
 static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index);
@@ -71,22 +63,27 @@ static void int_read_callback(UTR_T *utr) {
         return;
     }
 
-    SDL_Joystick *joy = (SDL_Joystick *)xid_dev->user_data;
-
-    //Cap data len to buffer size.
-    Uint32 data_len = utr->xfer_len;
-    if (data_len > MAX_PACKET_SIZE)
-        data_len = MAX_PACKET_SIZE;
-
-    if (joy->hwdata != NULL)
-    {
-        SDL_memcpy(joy->hwdata->raw_data, utr->buff, data_len);
-
-        //Re-queue the USB transfer
-        utr->xfer_len = 0;
-        utr->bIsTransferDone = 0;
-        usbh_int_xfer(utr);
+    Uint32 data_len = 0;
+    switch (xid_dev->xid_desc.bType) {
+    case XID_TYPE_GAMECONTROLLER: data_len = sizeof(xid_gamepad_in); break;
+    case XID_TYPE_STEELBATTALION: data_len = sizeof(xid_steelbattalion_in); break;
+    default: return;
     }
+    
+    //Cap data len to buffer size.
+    if (data_len > utr->xfer_len) data_len = utr->xfer_len;
+    
+    if (!data_len) return;
+
+    SDL_Joystick *joy = (SDL_Joystick *)xid_dev->user_data;
+    if (joy->hwdata == NULL) return;
+    
+    SDL_memcpy(&joy->hwdata->in, utr->buff, data_len);
+    
+    //Re-queue the USB transfer
+    utr->xfer_len = 0;
+    utr->bIsTransferDone = 0;
+    usbh_int_xfer(utr);
 }
 
 xid_dev_t * xid_from_joystick(SDL_Joystick * joystick) {
@@ -100,8 +97,9 @@ static xid_dev_t *xid_from_device_index(Sint32 device_index) {
     //Scan the xid_dev linked list and finds the nth xid_dev that is a gamepad.
     while (xid_dev != NULL && i <= device_index)
     {
-        //FIXME: Include xremote and steel battalion in the joystick API.
-        if (xid_dev->xid_desc.bType == XID_TYPE_GAMECONTROLLER)
+        //FIXME: Include xremote in the joystick API.
+        if (xid_dev->xid_desc.bType == XID_TYPE_GAMECONTROLLER
+        ||  xid_dev->xid_desc.bType == XID_TYPE_STEELBATTALION)
         {
             if (i == device_index)
                 return xid_dev;
@@ -195,8 +193,7 @@ static const char* SDL_XBOX_JoystickGetDeviceName(Sint32 device_index) {
     Uint32 max_len = sizeof(name[device_index]);
 
     Sint32 player_index = SDL_XBOX_JoystickGetDevicePlayerIndex(device_index);
-    switch (xid_dev->xid_desc.bType)
-    {
+    switch (xid_dev->xid_desc.bType) {
     case XID_TYPE_GAMECONTROLLER:
         SDL_snprintf(name[device_index], max_len, "Original Xbox Controller #%u", player_index);
         break;
@@ -248,16 +245,12 @@ static SDL_JoystickGUID SDL_XBOX_JoystickGetDeviceGUID(Sint32 device_index) {
 }
 
 static SDL_JoystickID SDL_XBOX_JoystickGetDeviceInstanceID(Sint32 device_index) {
+    SDL_JoystickID ret = -1;
+    
     xid_dev_t *xid_dev = xid_from_device_index(device_index);
-
-    SDL_JoystickID ret;
-    SDL_zero(ret);
-
-    if (xid_dev != NULL)
-    {
-        SDL_memcpy(&ret, &xid_dev->uid, sizeof(xid_dev->uid));
-    }
-    JOY_DBGMSG("SDL_XBOX_JoystickGetDeviceInstanceID: %i\n", xid_dev->uid);
+    if (xid_dev != NULL) ret = xid_dev->uid;
+    
+    JOY_DBGMSG("SDL_XBOX_JoystickGetDeviceInstanceID: %d\n", ret);
     return ret;
 }
 
@@ -270,7 +263,7 @@ static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index)
         return -1;
     }
     
-    joystick->hwdata = (pjoystick_hwdata)SDL_malloc(sizeof(joystick_hwdata));
+    joystick->hwdata = (joystick_hwdata *)SDL_malloc(sizeof(joystick_hwdata));
     assert(joystick->hwdata != NULL);
     SDL_zerop(joystick->hwdata);
     joystick->hwdata->xid_dev = xid_dev;
@@ -315,13 +308,9 @@ static Sint32 SDL_XBOX_JoystickRumble(SDL_Joystick *joystick,
     xid_dev_t * xid_dev = xid_from_joystick(joystick);
     if (xid_dev == NULL) return -1;
     
-    switch (xid_dev->xid_desc.bType) {
-    case XID_TYPE_GAMECONTROLLER: return gamepad_rumble(joystick,
-                                                        low_frequency_rumble,
-                                                        high_frequency_rumble,
-                                                        duration_ms);
-    default: return -1;
-    }
+    if (xid_dev->xid_desc.bType != XID_TYPE_GAMECONTROLLER) return -1;
+    
+    return gamepad_rumble(joystick, low_frequency_rumble, high_frequency_rumble, duration_ms);
 }
 
 static void SDL_XBOX_JoystickUpdate(SDL_Joystick *joystick) {
@@ -346,7 +335,7 @@ static void SDL_XBOX_JoystickClose(SDL_Joystick *joystick) {
         }
         xid_dev->user_data = NULL;
         
-        JOY_DBGMSG("Closing joystick:\n", joystick->hwdata->xid_dev->uid);
+        JOY_DBGMSG("Closing joystick: %u\n", joystick->hwdata->xid_dev->uid);
         JOY_DBGMSG("joystick player_index: %i\n", joystick->player_index);
     }
     SDL_free(joystick->hwdata);

@@ -2,29 +2,37 @@
 
 #include <xid_driver.h>
 
-#define MAX_PACKET_SIZE 32
-#define SBC_LIGHT_COUNT 48
+//#define SDL_JOYSTICK_XBOX_DEBUG
+#ifdef SDL_JOYSTICK_XBOX_DEBUG
+#include <hal/debug.h>
+#define JOY_DBGMSG debugPrint
+#else
+#define JOY_DBGMSG(...)
+#endif
 
 typedef struct gamepad_data {
     Uint16 low_frequency_rumble;
     Uint16 high_frequency_rumble;
     Uint32 rumble_expiry;
-} gamepad_data, *pgamepad_data;
+} gamepad_data;
 
 typedef struct sbc_data {
-    Uint8 lights[SBC_LIGHT_COUNT / 2];
-} sbc_data, *psbc_data;
+    Uint8 lights[STEELBATTALION_LIGHT_BYTES];
+} sbc_data;
 
 //Struct linked to SDL_Joystick
 typedef struct joystick_hwdata
 {
     xid_dev_t *xid_dev;
-    Uint8 raw_data[MAX_PACKET_SIZE];
+    union {
+        xid_gamepad_in gamepad;
+        xid_steelbattalion_in sbc;
+    } in;
     union {
         gamepad_data gamepad;
         sbc_data sbc;
     } data;
-} joystick_hwdata, *pjoystick_hwdata;
+} joystick_hwdata;
 
 xid_dev_t * xid_from_joystick(SDL_Joystick * joystick);
 
