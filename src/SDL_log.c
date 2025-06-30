@@ -37,6 +37,10 @@
 #include <android/log.h>
 #endif
 
+#if defined(NXDK)
+#include <windows.h>
+#endif
+
 #define DEFAULT_PRIORITY                SDL_LOG_PRIORITY_CRITICAL
 #define DEFAULT_ASSERT_PRIORITY         SDL_LOG_PRIORITY_WARN
 #define DEFAULT_APPLICATION_PRIORITY    SDL_LOG_PRIORITY_INFO
@@ -421,6 +425,12 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
         pFile = fopen ("SDL_Log.txt", "a");
         fprintf(pFile, "%s: %s\n", SDL_priority_prefixes[priority], message);
         fclose (pFile);
+    }
+#elif defined(NXDK)
+    {
+        static char text[SDL_MAX_LOG_MESSAGE];
+        SDL_snprintf(text, SDL_MAX_LOG_MESSAGE, "%s: %s\n", SDL_priority_prefixes[priority], message);
+        OutputDebugStringA(text);
     }
 #endif
 #if HAVE_STDIO_H
