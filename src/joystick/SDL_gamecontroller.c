@@ -1033,6 +1033,14 @@ static ControllerMapping_t *SDL_PrivateGetControllerMappingForNameAndGUID(const 
         }
     }
 #endif /* __LINUX__ */
+#ifdef SDL_JOYSTICK_XBOX
+    if (!mapping && SDL_IsJoystickXID(guid)
+    && (guid.data[10] != 0x01 || (guid.data[11] != 0x01 && guid.data[11] != 0x02))) {
+        // This device is not an XID Gamepad Style Controller and thus should not use the default mapping
+        // You can define an explicit mapping for this device inside SDL_gamecontrollerdb.h
+        return NULL;
+    }
+#endif /* SDL_JOYSTICK_XBOX */
     if (!mapping && name) {
         if (SDL_strstr(name, "Xbox") || SDL_strstr(name, "X-Box") || SDL_strstr(name, "XBOX")) {
             mapping = s_pXInputMapping;
