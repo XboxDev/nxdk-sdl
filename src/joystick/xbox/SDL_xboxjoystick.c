@@ -25,7 +25,7 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_JOYSTICK_XBOX
+#ifdef SDL_JOYSTICK_XBOX
 
 #include "SDL_joystick.h"
 #include "SDL_events.h"
@@ -46,12 +46,12 @@ static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index);
 
 //Create SDL events for connection/disconnection. These events can then be handled in the user application
 static void connection_callback(xid_dev_t *xid_dev, int status) {
-    JOY_DBGMSG("connection_callback: uid %i connected \n", xid_dev->uid);
+    SDL_Log("connection_callback: uid %i connected\n", xid_dev->uid);
     SDL_PrivateJoystickAdded(xid_dev->uid);
 }
 
 static void disconnect_callback(xid_dev_t *xid_dev, int status) {
-    JOY_DBGMSG("disconnect_callback uid %i disconnected\n", xid_dev->uid);
+    SDL_Log("disconnect_callback uid %i disconnected\n", xid_dev->uid);
     SDL_PrivateJoystickRemoved(xid_dev->uid);
 }
 
@@ -175,7 +175,7 @@ static Sint32 SDL_XBOX_JoystickGetCount() {
         }
         xid_dev = xid_dev->next;
     }
-    JOY_DBGMSG("SDL_XBOX_JoystickGetCount: Found %i pads\n", pad_cnt);
+    SDL_Log("SDL_XBOX_JoystickGetCount: Found %i pads\n", pad_cnt);
     return pad_cnt;
 }
 
@@ -221,7 +221,7 @@ static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index) {
     if (player_index == 0) {    // fallback to device_index if xid_get_device_port fails (returns 0)
         player_index = device_index;
     }
-    JOY_DBGMSG("SDL_XBOX_JoystickGetDevicePlayerIndex: %i\n", player_index);
+    SDL_Log("SDL_XBOX_JoystickGetDevicePlayerIndex: %i\n", player_index);
 
     return player_index;
 }
@@ -229,29 +229,38 @@ static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index) {
 static SDL_JoystickGUID SDL_XBOX_JoystickGetDeviceGUID(Sint32 device_index) {
     xid_dev_t *xid_dev = xid_from_device_index(device_index);
 
-    SDL_JoystickGUID ret;
-    SDL_zero(ret);
+    SDL_JoystickGUID guid;
+    SDL_zero(guid);
 
     if (xid_dev != NULL)
     {
-        //Format based on SDL_gamecontrollerdb.h
-        ret.data[0] = 0x03;
-        ret.data[4] = xid_dev->idVendor & 0xFF;
-        ret.data[5] = (xid_dev->idVendor >> 8) & 0xFF;
-        ret.data[8] = xid_dev->idProduct & 0xFF;
-        ret.data[9] = (xid_dev->idProduct >> 8) & 0xFF;
+        // Format based on SDL_hidapijoystick.c
+        Uint16 *guid16 = (Uint16 *)guid.data;
+        
+        guid16[0] = SDL_SwapLE16(SDL_HARDWARE_BUS_USB);
+        guid16[2] = SDL_SwapLE16(xid_dev->idVendor);
+        guid16[4] = SDL_SwapLE16(xid_dev->idProduct);
+        
+        // guid16[5] XID_DESC Info
+        guid.data[10] = xid_dev->xid_desc.bType;
+        guid.data[11] = xid_dev->xid_desc.bSubType;
+        
+        guid16[6] = SDL_SwapLE16(xid_dev->xid_desc.bcdXid);
+        
+        // guid16[7] Mark this GUID as an XID device for use elsewhere
+        guid.data[14] = xid_dev->xid_desc.bDescriptorType;
     }
-    return ret;
+    return guid;
 }
 
 static SDL_JoystickID SDL_XBOX_JoystickGetDeviceInstanceID(Sint32 device_index) {
-    SDL_JoystickID ret = -1;
+    SDL_JoystickID joyID = -1;
     
     xid_dev_t *xid_dev = xid_from_device_index(device_index);
-    if (xid_dev != NULL) ret = xid_dev->uid;
+    if (xid_dev != NULL) joyID = xid_dev->uid;
     
-    JOY_DBGMSG("SDL_XBOX_JoystickGetDeviceInstanceID: %d\n", ret);
-    return ret;
+    SDL_Log("SDL_XBOX_JoystickGetDeviceInstanceID: %d\n", joyID);
+    return joyID;
 }
 
 static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index) {
@@ -259,7 +268,7 @@ static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index)
 
     if (xid_dev == NULL)
     {
-        JOY_DBGMSG("SDL_XBOX_JoystickOpen: Could not find device index %i\n", device_index);
+        SDL_Log("SDL_XBOX_JoystickOpen: Could not find device index %i\n", device_index);
         return -1;
     }
     
@@ -288,11 +297,11 @@ static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index)
     
     xid_dev->user_data = (void *)joystick;
 
-    JOY_DBGMSG("JoystickOpened:\n");
-    JOY_DBGMSG("joystick device_index: %i\n", device_index);
-    JOY_DBGMSG("joystick player_index: %i\n", joystick->player_index);
-    JOY_DBGMSG("joystick uid: %i\n", xid_dev->uid);
-    JOY_DBGMSG("joystick name: %s\n", SDL_XBOX_JoystickGetDeviceName(device_index));
+    SDL_Log("SDL_XBOX_JoystickOpen:\n");
+    SDL_Log("joystick device_index: %i\n", device_index);
+    SDL_Log("joystick player_index: %i\n", joystick->player_index);
+    SDL_Log("joystick uid: %i\n", xid_dev->uid);
+    SDL_Log("joystick name: %s\n", SDL_XBOX_JoystickGetDeviceName(device_index));
 
     //Start reading interrupt pipe
     usbh_xid_read(xid_dev, 0, int_read_callback);
@@ -324,7 +333,7 @@ static void SDL_XBOX_JoystickUpdate(SDL_Joystick *joystick) {
 }
 
 static void SDL_XBOX_JoystickClose(SDL_Joystick *joystick) {
-    JOY_DBGMSG("SDL_XBOX_JoystickClose:\n");
+    SDL_Log("SDL_XBOX_JoystickClose:\n");
     
     xid_dev_t * xid_dev = xid_from_joystick(joystick);
     if (xid_dev != NULL)
@@ -335,8 +344,8 @@ static void SDL_XBOX_JoystickClose(SDL_Joystick *joystick) {
         }
         xid_dev->user_data = NULL;
         
-        JOY_DBGMSG("Closing joystick: %u\n", joystick->hwdata->xid_dev->uid);
-        JOY_DBGMSG("joystick player_index: %i\n", joystick->player_index);
+        SDL_Log("Closing joystick: %u\n", joystick->hwdata->xid_dev->uid);
+        SDL_Log("joystick player_index: %i\n", joystick->player_index);
     }
     SDL_free(joystick->hwdata);
     joystick->hwdata = NULL;
@@ -344,7 +353,7 @@ static void SDL_XBOX_JoystickClose(SDL_Joystick *joystick) {
 }
 
 static void SDL_XBOX_JoystickQuit(void) {
-    JOY_DBGMSG("SDL_XBOX_JoystickQuit\n");
+    SDL_Log("SDL_XBOX_JoystickQuit\n");
     usbh_install_xid_conn_callback(NULL, NULL);
     //We dont call usbh_core_deinit() here incase the user is using
     //the USB stack in other parts of their application other than game controllers.

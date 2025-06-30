@@ -81,11 +81,11 @@ void sbc_open(SDL_Joystick * joystick) {
     joystick->nbuttons = SBC_BUTTON_COUNT; //This includes the toggle switches
 }
 
-static SDL_bool get_sbc_button_pressed(xid_steelbattalion_in * insbc, enum SBC_BUTTON btn) {
+static Uint8 get_sbc_button_pressed(xid_steelbattalion_in * insbc, enum SBC_BUTTON btn) {
     unsigned int button_offset = btn / 16;
 	Uint16 button_mask = 1 << (btn % 16);
 
-    return (insbc->buttons[button_offset] & button_mask) ? SDL_TRUE : SDL_FALSE;
+    return (insbc->buttons[button_offset] & button_mask) ? SDL_PRESSED : SDL_RELEASED;
 }
 
 void sbc_update(SDL_Joystick *joystick) {

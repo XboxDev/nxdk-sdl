@@ -2,14 +2,6 @@
 
 #include <xid_driver.h>
 
-//#define SDL_JOYSTICK_XBOX_DEBUG
-#ifdef SDL_JOYSTICK_XBOX_DEBUG
-#include <hal/debug.h>
-#define JOY_DBGMSG debugPrint
-#else
-#define JOY_DBGMSG(...)
-#endif
-
 typedef struct gamepad_data {
     Uint16 low_frequency_rumble;
     Uint16 high_frequency_rumble;
