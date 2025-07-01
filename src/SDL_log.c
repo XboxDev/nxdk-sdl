@@ -428,9 +428,14 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
     }
 #elif defined(NXDK)
     {
-        static char text[SDL_MAX_LOG_MESSAGE];
-        SDL_snprintf(text, SDL_MAX_LOG_MESSAGE, "%s: %s\n", SDL_priority_prefixes[priority], message);
-        OutputDebugStringA(text);
+        // Calculate length of both strings + Colon, space, new-line, null-terminator.
+        size_t length = strlen(SDL_priority_prefixes[priority]) + strlen(message) + 4;
+        char * text = SDL_stack_alloc(char, length);
+        if (text) {
+            SDL_snprintf(text, length, "%s: %s\n", SDL_priority_prefixes[priority], message);
+            OutputDebugStringA(text);
+            SDL_stack_free(text);
+        }
     }
 #endif
 #if HAVE_STDIO_H
