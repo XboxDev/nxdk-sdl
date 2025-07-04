@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2019 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -90,6 +90,7 @@ setpix(SDL_Surface *screen, float _x, float _y, unsigned int col)
     *pixmem32 = colour;
 }
 
+#if 0 /* unused */
 static void
 drawLine(SDL_Surface *screen, float x0, float y0, float x1, float y1, unsigned int col)
 {
@@ -98,6 +99,7 @@ drawLine(SDL_Surface *screen, float x0, float y0, float x1, float y1, unsigned i
         setpix(screen, x1 + t * (x0 - x1), y1 + t * (y0 - y1), col);
     }
 }
+#endif
 
 static void
 drawCircle(SDL_Surface *screen, float x, float y, float r, unsigned int c)
@@ -188,7 +190,8 @@ loop(void)
                     case SDLK_i: {
                         for (i = 0; i < SDL_GetNumTouchDevices(); ++i) {
                             const SDL_TouchID id = SDL_GetTouchDevice(i);
-                            SDL_Log("Fingers Down on device %"SDL_PRIs64": %d", id, SDL_GetNumTouchFingers(id));
+                            const char *name = SDL_GetTouchName(i);
+                            SDL_Log("Fingers Down on device %"SDL_PRIs64" (%s): %d", id, name, SDL_GetNumTouchFingers(id));
                         }
                         break;
                     }
@@ -213,7 +216,7 @@ loop(void)
 
 #if VERBOSE
             case SDL_FINGERMOTION:
-                SDL_Log("Finger: %"SDL_PRIs64",x: %f, y: %f",event.tfinger.fingerId,
+                SDL_Log("Finger: %"SDL_PRIs64", x: %f, y: %f",event.tfinger.fingerId,
                         event.tfinger.x,event.tfinger.y);
                 break;
 
@@ -268,9 +271,6 @@ loop(void)
 
 int main(int argc, char* argv[])
 {
-    int i;
-
-    /* !!! FIXME: there should be an SDLTest_CommonDefaultArgs() so apps don't need this. */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
     if (!state) {
         return 1;
@@ -281,16 +281,8 @@ int main(int argc, char* argv[])
     state->window_h = HEIGHT;
     state->skip_renderer = SDL_TRUE;
 
-    for (i = 1; i < argc;) {
-        const int consumed = SDLTest_CommonArg(state, i);
-        if (consumed == 0) {
-            SDL_Log("Usage: %s %s\n", argv[0], SDLTest_CommonUsage(state));
-            return 1;
-        }
-        i += consumed;
-    }
-
-    if (!SDLTest_CommonInit(state)) {
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv) || !SDLTest_CommonInit(state)) {
+        SDLTest_CommonQuit(state);
         return 1;
     }
 

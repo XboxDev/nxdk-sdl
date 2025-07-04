@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2019 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -39,6 +39,8 @@ typedef struct SDL_WindowData
 #endif
     SDL_Window *window;
     SDL_Surface *surface;
+
+    char *canvas_id;
 
     float pixel_ratio;
 

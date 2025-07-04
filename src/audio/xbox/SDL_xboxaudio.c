@@ -71,7 +71,7 @@ XBOXAUDIO_CloseDevice(_THIS)
 }
 
 static int
-XBOXAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
+XBOXAUDIO_OpenDevice(_THIS, const char *devname)
 {
     _this->hidden = (SDL_PrivateAudioData *) SDL_calloc(1, (sizeof *_this->hidden));
     if (_this->hidden == NULL) {
