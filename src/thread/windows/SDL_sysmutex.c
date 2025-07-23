@@ -270,7 +270,7 @@ SDL_CreateMutex(void)
 #if __WINRT__
             /* Link statically on this platform */
             impl = &SDL_mutex_impl_srw;
-#else
+#elif !defined(__XBOX__)
             /* Try faster implementation for Windows 7 and newer */
             HMODULE kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
             if (kernel32) {

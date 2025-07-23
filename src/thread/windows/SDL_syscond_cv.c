@@ -209,6 +209,7 @@ static const SDL_cond_impl_t SDL_cond_impl_cv =
     &SDL_CondWaitTimeout_cv,
 };
 
+#if SDL_THREAD_GENERIC_COND_SUFFIX
 /**
  * Generic Condition Variable implementation using SDL_mutex and SDL_sem
  */
@@ -222,13 +223,16 @@ static const SDL_cond_impl_t SDL_cond_impl_generic =
     &SDL_CondWait_generic,
     &SDL_CondWaitTimeout_generic,
 };
-
+#endif /* SDL_THREAD_GENERIC_COND_SUFFIX */
 
 SDL_cond *
 SDL_CreateCond(void)
 {
     if (SDL_cond_impl_active.Create == NULL) {
-        /* Default to generic implementation, works with all mutex implementations */
+        const SDL_cond_impl_t * impl = NULL;
+        
+#if SDL_THREAD_GENERIC_COND_SUFFIX
+        /* generic implementation, works with all mutex implementations */
         const SDL_cond_impl_t * impl = &SDL_cond_impl_generic;
 
         if (SDL_mutex_impl_active.Type == SDL_MUTEX_INVALID) {
@@ -241,11 +245,12 @@ SDL_CreateCond(void)
 
             SDL_assert(SDL_mutex_impl_active.Type != SDL_MUTEX_INVALID);
         }
+#endif /* SDL_THREAD_GENERIC_COND_SUFFIX */
 
 #if __WINRT__
         /* Link statically on this platform */
         impl = &SDL_cond_impl_cv;
-#else
+#elif !defined(__XBOX__)
         {
             HMODULE kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
             if (kernel32) {
@@ -260,6 +265,8 @@ SDL_CreateCond(void)
             }
         }
 #endif
+        if (impl == NULL)
+            return NULL;
 
         SDL_memcpy(&SDL_cond_impl_active, impl, sizeof(SDL_cond_impl_active));
     }

@@ -408,7 +408,7 @@ SDL_CreateSemaphore(Uint32 initial_value)
 #if __WINRT__
             /* Link statically on this platform */
             impl = &SDL_sem_impl_atom;
-#else
+#elif !defined(__XBOX__)
             /* We already statically link to features from this Api
              * Set (e.g. WaitForSingleObject). Dynamically loading
              * API Sets is not explicitly documented but according to
