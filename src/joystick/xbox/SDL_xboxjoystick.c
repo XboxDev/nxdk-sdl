@@ -86,7 +86,6 @@ typedef struct joystick_hwdata
     xid_dev_t *xid_dev;
     Uint8 raw_data[MAX_PACKET_SIZE];
     Uint16 current_rumble[2];
-    Uint32 rumble_expiry;
 } joystick_hwdata, *pjoystick_hwdata;
 
 static Sint32 parse_input_data(xid_dev_t *xid_dev, PXINPUT_GAMEPAD controller, Uint8 *rdata);
@@ -265,6 +264,10 @@ static Sint32 SDL_XBOX_JoystickGetDevicePlayerIndex(Sint32 device_index) {
     return player_index;
 }
 
+static void SDL_XBOX_JoystickSetDevicePlayerIndex(Sint32 device_index, Sint32 player_index) {
+    // Nothing to do here, player index is determined by the physical controller port
+}
+
 static SDL_JoystickGUID SDL_XBOX_JoystickGetDeviceGUID(Sint32 device_index) {
     xid_dev_t *xid_dev = xid_from_device_index(device_index);
 
@@ -312,7 +315,6 @@ static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index)
 
     joystick->hwdata->xid_dev = xid_dev;
     joystick->hwdata->xid_dev->user_data = (void *)joystick;
-    joystick->player_index = SDL_XBOX_JoystickGetDevicePlayerIndex(device_index);
     joystick->guid = SDL_XBOX_JoystickGetDeviceGUID(device_index);
 
     switch (xid_dev->xid_desc.bType)
@@ -341,9 +343,11 @@ static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index)
         return -1;
     }
 
+    Sint32 player_index = SDL_XBOX_JoystickGetDevicePlayerIndex(device_index);
+
     JOY_DBGMSG("JoystickOpened:\n");
     JOY_DBGMSG("joystick device_index: %i\n", device_index);
-    JOY_DBGMSG("joystick player_index: %i\n", joystick->player_index);
+    JOY_DBGMSG("joystick player_index: %i\n", player_index);
     JOY_DBGMSG("joystick uid: %i\n", xid_dev->uid);
     JOY_DBGMSG("joystick name: %s\n", SDL_XBOX_JoystickGetDeviceName(device_index));
 
@@ -355,15 +359,13 @@ static Sint32 SDL_XBOX_JoystickOpen(SDL_Joystick *joystick, Sint32 device_index)
 
 static Sint32 SDL_XBOX_JoystickRumble(SDL_Joystick *joystick,
                                       Uint16 low_frequency_rumble,
-                                      Uint16 high_frequency_rumble,
-                                      Uint32 duration_ms) {
+                                      Uint16 high_frequency_rumble) {
 
     //Check if rumble values are new values.
     if (joystick->hwdata->current_rumble[0] == low_frequency_rumble &&
         joystick->hwdata->current_rumble[1] == high_frequency_rumble)
     {
-        //Rumble values not changed, reset the expiry timer and leave.
-        joystick->hwdata->rumble_expiry = SDL_GetTicks() + duration_ms;
+        // Values have not changed, nothing to do
         return 0;
     }
 
@@ -374,8 +376,29 @@ static Sint32 SDL_XBOX_JoystickRumble(SDL_Joystick *joystick,
 
     joystick->hwdata->current_rumble[0] = low_frequency_rumble;
     joystick->hwdata->current_rumble[1] = high_frequency_rumble;
-    joystick->hwdata->rumble_expiry = SDL_GetTicks() + duration_ms;
     return 0;
+}
+
+static Sint32 SDL_XBOX_JoystickRumbleTriggers(SDL_Joystick *joystick,
+                                      Uint16 left_rumble,
+                                      Uint16 right_rumble) {
+    return -1; // XBOX Controllers don't have this capability
+}
+
+static Uint32 SDL_XBOX_JoystickGetCapabilities(SDL_Joystick *joystick) {
+    return 0;
+}
+
+static int SDL_XBOX_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue) {
+    return -1;
+}
+
+static int SDL_XBOX_JoystickSendEffect(SDL_Joystick *joystick, const void *data, int size) {
+    return -1;
+}
+
+static int SDL_XBOX_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled) {
+    return -1;
 }
 
 static void SDL_XBOX_JoystickUpdate(SDL_Joystick *joystick) {
@@ -386,15 +409,6 @@ static void SDL_XBOX_JoystickUpdate(SDL_Joystick *joystick) {
     if (joystick == NULL || joystick->hwdata == NULL || joystick->hwdata->xid_dev == NULL)
     {
         return;
-    }
-
-    //Check if the rumble timer has expired.
-    if (joystick->hwdata->rumble_expiry && SDL_GetTicks() > joystick->hwdata->rumble_expiry)
-    {
-        usbh_xid_rumble(joystick->hwdata->xid_dev, 0, 0);
-        joystick->hwdata->rumble_expiry = 0;
-        joystick->hwdata->current_rumble[0] = 0;
-        joystick->hwdata->current_rumble[1] = 0;
     }
 
     Uint8 button_data[MAX_PACKET_SIZE];
@@ -475,7 +489,6 @@ static void SDL_XBOX_JoystickClose(SDL_Joystick *joystick) {
     if (xid_dev != NULL)
     {
         JOY_DBGMSG("Closing joystick:\n", joystick->hwdata->xid_dev->uid);
-        JOY_DBGMSG("joystick player_index: %i\n", joystick->player_index);
     }
     SDL_free(joystick->hwdata);
     joystick->hwdata = NULL;
@@ -489,19 +502,30 @@ static void SDL_XBOX_JoystickQuit(void) {
     //the USB stack in other parts of their application other than game controllers.
 }
 
+static SDL_bool SDL_XBOX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping * out) {
+    return SDL_FALSE;
+}
+
 SDL_JoystickDriver SDL_XBOX_JoystickDriver = {
     SDL_XBOX_JoystickInit,
     SDL_XBOX_JoystickGetCount,
     SDL_XBOX_JoystickDetect,
     SDL_XBOX_JoystickGetDeviceName,
     SDL_XBOX_JoystickGetDevicePlayerIndex,
+    SDL_XBOX_JoystickSetDevicePlayerIndex,
     SDL_XBOX_JoystickGetDeviceGUID,
     SDL_XBOX_JoystickGetDeviceInstanceID,
     SDL_XBOX_JoystickOpen,
     SDL_XBOX_JoystickRumble,
+    SDL_XBOX_JoystickRumbleTriggers,
+    SDL_XBOX_JoystickGetCapabilities,
+    SDL_XBOX_JoystickSetLED,
+    SDL_XBOX_JoystickSendEffect,
+    SDL_XBOX_JoystickSetSensorsEnabled,
     SDL_XBOX_JoystickUpdate,
     SDL_XBOX_JoystickClose,
-    SDL_XBOX_JoystickQuit
+    SDL_XBOX_JoystickQuit,
+    SDL_XBOX_JoystickGetGamepadMapping,
 };
 
 static Sint32 parse_input_data(xid_dev_t *xid_dev, PXINPUT_GAMEPAD controller, Uint8 *rdata) {

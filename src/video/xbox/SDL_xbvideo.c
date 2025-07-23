@@ -90,18 +90,6 @@ XBOX_CreateWindow(_THIS, SDL_Window * window)
 
 /* XBOX driver bootstrap functions */
 
-static int
-XBOX_Available(void)
-{
-  return 1;
-    const char *envr = SDL_getenv("SDL_VIDEODRIVER");
-    if ((envr) && (SDL_strcmp(envr, XBOXVID_DRIVER_NAME) == 0)) {
-        return (1);
-    }
-
-    return (0);
-}
-
 static void
 XBOX_DeleteDevice(SDL_VideoDevice * device)
 {
@@ -136,8 +124,9 @@ XBOX_CreateDevice(int devindex)
 }
 
 VideoBootStrap XBOX_bootstrap = {
-    XBOXVID_DRIVER_NAME, "SDL XBOX video driver",
-    XBOX_Available, XBOX_CreateDevice
+    XBOXVID_DRIVER_NAME,
+    "SDL XBOX video driver",
+    XBOX_CreateDevice
 };
 
 int
