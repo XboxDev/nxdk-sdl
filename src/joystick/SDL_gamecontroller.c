@@ -1034,11 +1034,11 @@ static ControllerMapping_t *SDL_PrivateGetControllerMappingForNameAndGUID(const 
     }
 #endif /* __LINUX__ */
 #ifdef SDL_JOYSTICK_XBOX
-    if (!mapping) {
-        SDL_bool existing;
-        mapping = SDL_PrivateAddMappingForGUID(guid,
-"default,Original Xbox Controller,a:b0,b:b1,back:b6,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b8,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b9,righttrigger:a5,rightx:a3,righty:a4,start:b7,x:b2,y:b3,",
-                  &existing, SDL_CONTROLLER_MAPPING_PRIORITY_DEFAULT);
+    if (!mapping && SDL_IsJoystickXID(guid)
+    && (guid.data[10] != 0x01 || (guid.data[11] != 0x01 && guid.data[11] != 0x02))) {
+        // This device is not an XID Gamepad Style Controller and thus should not use the default mapping
+        // You can define an explicit mapping for this device inside SDL_gamecontrollerdb.h
+        return NULL;
     }
 #endif /* SDL_JOYSTICK_XBOX */
     if (!mapping && name) {
